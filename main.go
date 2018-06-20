@@ -264,11 +264,11 @@ func HandleServer(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte(reason))
 		} else {
 			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte("The header 'Content-Type' must be defined")
+			w.Write([]byte("The header 'Content-Type' must be defined"))
 		}
 	} else {
 		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Requests must be sent as a POST request")
+		w.Write([]byte("Requests must be sent as a POST request"))
 	}
 }
 
