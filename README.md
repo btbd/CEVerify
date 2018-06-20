@@ -1,4 +1,4 @@
-# CloudEvent Verify
+# CloudEvents Verify
 
 A tool to help verify CloudEvents according to the <a href="https://github.com/cloudevents/spec/blob/master/spec.md">specifications</a>.
 
