@@ -275,16 +275,9 @@ A tool to help verify CloudEvents according to the <a href="https://github.com/c
 
 If no value is returned, the CloudEvent is correct. Otherwise, an error will be returned.
 <br>
-If no arguments are given, a server on port 80 will be started.
-- To see how to use the server, see the <a href="https://github.com/cloudevents/spec/blob/master/http-transport-binding.md">HTTP Transport Binding for CloudEvents</a>.
+- To see how to send proper requests to this server, see the <a href="https://github.com/cloudevents/spec/blob/master/http-transport-binding.md">HTTP Transport Binding for CloudEvents</a>.
 
-<h3>Arguments (Optional)</h3>
-<pre><span style="font-family: Courier New">- 'f' - File to verify
-	- File path to a CloudEvent in JSON
-	- Use '-' to read from 'stdin'
-- 'p' - Server port (default 80)
-- 'crt' - File path to certificate for TLS
-- 'key' - File path to key for TLS</span></pre></body>`))
+<div style="position: absolute; top: 0; right: 5px;"><a href="https://github.com/btbd/CEVerify">source</a></div></body>`))
 	}
 }
 
