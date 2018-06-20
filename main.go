@@ -267,8 +267,24 @@ func HandleServer(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte("The header 'Content-Type' must be defined"))
 		}
 	} else {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Requests must be sent as a POST request"))
+		w.Write([]byte(`<body style="font-family: Segoe UI"><h1>CloudEvents Verify</h1>
+
+A tool to help verify CloudEvents according to the <a href="https://github.com/cloudevents/spec/blob/master/spec.md">specifications</a>.
+
+<h2>Usage</h2>
+
+If no value is returned, the CloudEvent is correct. Otherwise, an error will be returned.
+<br>
+If no arguments are given, a server on port 80 will be started.
+- To see how to use the server, see the <a href="https://github.com/cloudevents/spec/blob/master/http-transport-binding.md">HTTP Transport Binding for CloudEvents</a>.
+
+<h3>Arguments (Optional)</h3>
+<pre><span style="font-family: Courier New">- 'f' - File to verify
+	- File path to a CloudEvent in JSON
+	- Use '-' to read from 'stdin'
+- 'p' - Server port (default 80)
+- 'crt' - File path to certificate for TLS
+- 'key' - File path to key for TLS</span></pre></body>`))
 	}
 }
 
