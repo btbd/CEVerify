@@ -221,6 +221,7 @@ func HandleServer(w http.ResponseWriter, r *http.Request) {
 
 		if r.Header["content-type"] != nil {
 			j := make(map[string]interface{})
+			reason := ""
 
 			if t := strings.ToLower(r.Header["content-type"][0]); strings.HasPrefix(t, "application/cloudevents") {
 				// structured mode
@@ -233,6 +234,8 @@ func HandleServer(w http.ResponseWriter, r *http.Request) {
 						return
 					}
 				}
+				
+				reason = VerifyJSON(j)
 			} else {
 				// binary mode
 				j["contentType"] = t
@@ -255,9 +258,10 @@ func HandleServer(w http.ResponseWriter, r *http.Request) {
 						j["extensions"].(map[string]interface{})[name[5:len(name)]] = r.Header[name][0] // preserve extension's case
 					}
 				}
+				
+				reason = regexp.MustCompile(`(?i)attribute`).ReplaceAllString(VerifyJSON(j), "HTTP header")
 			}
 
-			reason := VerifyJSON(j)
 			if reason != "" {
 				w.WriteHeader(http.StatusBadRequest)
 			}
