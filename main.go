@@ -14,56 +14,56 @@ import (
 )
 
 type Attribute struct {
-	name     string
-	required bool
-	check    func(map[string]interface{}, string) string
+	Name     string
+	Required bool
+	Check    func(map[string]interface{}, string) string
 }
 
 var Attributes []Attribute = []Attribute{
 	{
-		name:     "contentType",
-		required: false,
-		check:    CheckMediaType,
+		Name:     "id",
+		Required: true,
+		Check:    CheckString,
 	},
 	{
-		name:     "extensions",
-		required: false,
-		check:    CheckMap,
+		Name:     "source",
+		Required: true,
+		Check:    CheckURI,
 	},
 	{
-		name:     "eventType",
-		required: true,
-		check:    CheckString,
+		Name:     "specversion",
+		Required: true,
+		Check:    CheckString,
 	},
 	{
-		name:     "eventTypeVersion",
-		required: false,
-		check:    CheckString,
+		Name:     "type",
+		Required: true,
+		Check:    CheckString,
 	},
 	{
-		name:     "cloudEventsVersion",
-		required: true,
-		check:    CheckString,
+		Name:     "datacontentencoding",
+		Required: false,
+		Check:    CheckEncoding,
 	},
 	{
-		name:     "source",
-		required: true,
-		check:    CheckURI,
+		Name:     "datacontenttype",
+		Required: false,
+		Check:    CheckMediaType,
 	},
 	{
-		name:     "eventID",
-		required: true,
-		check:    CheckString,
+		Name:     "schemaurl",
+		Required: false,
+		Check:    CheckURI,
 	},
 	{
-		name:     "eventTime",
-		required: false,
-		check:    CheckTimestamp,
+		Name:     "subject",
+		Required: false,
+		Check:    CheckString,
 	},
 	{
-		name:     "schemaURL",
-		required: false,
-		check:    CheckURI,
+		Name:     "time",
+		Required: false,
+		Check:    CheckTimestamp,
 	},
 }
 
@@ -88,7 +88,7 @@ func CheckURI(j map[string]interface{}, v string) string {
 	if t := reflect.TypeOf(j[v]).String(); t != "string" {
 		return "Attribute `" + v + "` is not of type URI (is currently of type " + t + ")\n"
 	}
-	
+
 	if len(j[v].(string)) == 0 {
 		return "Attribute `" + v + "` cannot be empty\n"
 	}
@@ -117,6 +117,20 @@ func CheckTimestamp(j map[string]interface{}, v string) string {
 	}
 
 	return ""
+}
+
+func CheckEncoding(j map[string]interface{}, v string) string {
+	res := CheckString(j, v)
+
+	if res == "" {
+		var format = regexp.MustCompile(`(7bit|8bit|binary|quoted-printable|base64)`)
+
+		if !format.MatchString(j[v].(string)) {
+			return "Attribute `" + v + "` is not a valid encoding type"
+		}
+	}
+
+	return res
 }
 
 func CheckMediaType(j map[string]interface{}, v string) string {
@@ -149,26 +163,26 @@ func VerifyJSON(j map[string]interface{}) string {
 	reason := ""
 
 	for _, e := range Attributes {
-		if e.required && j[e.name] == nil {
-			reason += "Attribute `" + e.name + "` is missing.\n"
+		if e.Required && j[e.Name] == nil {
+			reason += "Attribute `" + e.Name + "` is missing.\n"
 		}
 
-		if v, ok := j[e.name]; ok {
+		if v, ok := j[e.Name]; ok {
 			if v == nil {
-				reason += "Attribute `" + e.name + "` cannot be null.\n"
+				reason += "Attribute `" + e.Name + "` cannot be null.\n"
 			} else {
-				reason += e.check(j, e.name)
+				reason += e.Check(j, e.Name)
 			}
 		}
 	}
 
-	return reason
-}
-
-func MapHeader(j *map[string]interface{}, name string, header http.Header) {
-	if n := strings.ToLower(name); header["ce-"+n] != nil { // event headers are prefixed with "ce-"
-		(*j)[name] = header["ce-"+n][0]
+	for k := range j {
+		if len(regexp.MustCompile(`([a-z]|[0-9])+`).FindString(k)) != len(k) {
+			reason += "Attribute `" + k + "` does not contain only lowercase and 0-9 characters.\n"
+		}
 	}
+
+	return reason
 }
 
 func HandleFile(file string) {
@@ -213,17 +227,11 @@ func HandleServer(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	if r.Method == "POST" {
-		for name, _ := range r.Header { // headers should be case insensitive, but preserve extensions' case
-			if !(len(name) > 5 && strings.HasPrefix(strings.ToLower(name), "ce-x-")) {
-				r.Header[strings.ToLower(name)] = r.Header[name]
-			}
-		}
-
-		if r.Header["content-type"] != nil {
+		if t := strings.ToLower(r.Header.Get("Content-Type")); t != "" {
 			j := make(map[string]interface{})
 			reason := ""
 
-			if t := strings.ToLower(r.Header["content-type"][0]); strings.HasPrefix(t, "application/cloudevents") {
+			if strings.HasPrefix(t, "application/cloudevents") {
 				// structured mode
 				body, err := ioutil.ReadAll(r.Body)
 				if err == nil {
@@ -234,32 +242,28 @@ func HandleServer(w http.ResponseWriter, r *http.Request) {
 						return
 					}
 				}
-				
+
 				reason = VerifyJSON(j)
 			} else {
 				// binary mode
-				j["contentType"] = t
+				j["datacontenttype"] = t
 
 				body, err := ioutil.ReadAll(r.Body)
 				if err == nil {
 					j["data"] = string(body)
 				}
 
-				for i := 2; i < len(Attributes); i++ { // skip extensions + content type
-					MapHeader(&j, Attributes[i].name, r.Header)
-				}
-
-				for name, _ := range r.Header { //
-					if len(name) > 5 && strings.HasPrefix(strings.ToLower(name), "ce-x-") && r.Header[name] != nil {
-						if j["extensions"] == nil {
-							j["extensions"] = make(map[string]interface{})
+				for h := range r.Header {
+					if strings.HasPrefix(strings.ToLower(h), "ce-") {
+						if n := strings.ToLower(h[3:]); len(n) == 0 {
+							reason += "Bad CloudEvent header.\n"
+						} else {
+							j[n] = r.Header[h][0]
 						}
-
-						j["extensions"].(map[string]interface{})[name[5:len(name)]] = r.Header[name][0] // preserve extension's case
 					}
 				}
-				
-				reason = regexp.MustCompile(`(?i)attribute`).ReplaceAllString(VerifyJSON(j), "HTTP header")
+
+				reason += regexp.MustCompile(`(?i)attribute`).ReplaceAllString(VerifyJSON(j), "HTTP header")
 			}
 
 			if reason != "" {
